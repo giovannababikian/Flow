@@ -1,0 +1,6 @@
+{
+  "name": "Rhythm Flow — Bullet Notes, Agenda e Tempo",
+  "description": "Agenda minimalista com bullet notes, notas rápidas, gestão de tempo, modo offline e backup automático em nuvem.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
