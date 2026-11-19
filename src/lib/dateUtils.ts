@@ -120,7 +120,7 @@ export function weekSummary(state: PlannerState, referenceDate = new Date()) {
     let dominantColor: string | null = null;
     if (doneBlocks.length > 0) {
       const h = state.habits.find((item) => item.id === doneBlocks[0].habitId);
-      dominantColor = h?.color ?? null;
+      dominantColor = doneBlocks[0].color ?? h?.color ?? null;
     }
     return {
       key,

@@ -61,6 +61,7 @@ export default function App() {
     block: Block | null;
     start: number;
     defaultTitle?: string;
+    defaultColor?: HabitColor;
     initialTab?: 'block' | 'habit';
   } | null>(null);
   const [syncSheetOpen, setSyncSheetOpen] = useState(false);
@@ -330,6 +331,28 @@ export default function App() {
     }));
   };
 
+  const handleDuplicateBlock = (block: Block) => {
+    const ts = Date.now();
+    mutateState((s) => {
+      const alreadyExists = s.blocks.some((b) => b.id === block.id);
+      const nextStart = alreadyExists
+        ? block.start + block.duration + block.duration <= s.dayRange.end
+          ? block.start + block.duration
+          : Math.min(23 * 60 - block.duration, block.start + 30)
+        : block.start;
+      const cloned: Block = {
+        ...block,
+        id: alreadyExists ? uid() : block.id,
+        start: Math.max(0, nextStart),
+        updatedAt: ts,
+      };
+      return {
+        ...s,
+        blocks: [...s.blocks, cloned],
+      };
+    });
+  };
+
   const handleDeleteBlock = (blockId: string) => {
     const ts = Date.now();
     mutateState((s) => {
@@ -366,7 +389,12 @@ export default function App() {
     }));
   };
 
-  const handleAddBullet = (type: BulletType, text: string, targetKey = activeDateKey) => {
+  const handleAddBullet = (
+    type: BulletType,
+    text: string,
+    targetKey = activeDateKey,
+    color: HabitColor = 'focus'
+  ) => {
     const ts = Date.now();
     mutateState((s) => ({
       ...s,
@@ -376,6 +404,7 @@ export default function App() {
           id: `bul-${uid()}`,
           dateKey: targetKey,
           type,
+          color,
           text: text.slice(0, 280),
           done: false,
           order: s.bullets.length,
@@ -404,6 +433,37 @@ export default function App() {
         b.id === id ? { ...b, text: text.slice(0, 280), updatedAt: ts } : b
       ),
     }));
+  };
+
+  const handleChangeBulletColor = (id: string, color: HabitColor) => {
+    const ts = Date.now();
+    mutateState((s) => ({
+      ...s,
+      bullets: s.bullets.map((b) => (b.id === id ? { ...b, color, updatedAt: ts } : b)),
+    }));
+  };
+
+  const handleDuplicateBullet = (id: string) => {
+    const ts = Date.now();
+    mutateState((s) => {
+      const idx = s.bullets.findIndex((b) => b.id === id);
+      if (idx === -1) return s;
+      const source = s.bullets[idx];
+      const copy: BulletItem = {
+        ...source,
+        id: `bul-${uid()}`,
+        done: false,
+        order: source.order + 0.5,
+        createdAt: ts,
+        updatedAt: ts,
+      };
+      const nextBullets = [...s.bullets];
+      nextBullets.splice(idx + 1, 0, copy);
+      return {
+        ...s,
+        bullets: nextBullets.map((b, i) => ({ ...b, order: i })),
+      };
+    });
   };
 
   const handleMigrateBulletTomorrow = (id: string) => {
@@ -437,6 +497,7 @@ export default function App() {
       block: null,
       start: bullet.timeMinutes ?? defaultStart,
       defaultTitle: bullet.text,
+      defaultColor: bullet.color ?? 'focus',
     });
   };
 
@@ -578,13 +639,18 @@ export default function App() {
                   onSelectDate={setDisplayDate}
                   onToggleBlockDone={handleToggleBlockDone}
                   onMoveBlockTime={handleMoveBlockTime}
-                  onOpenBlockEditor={(block, start, defaultTitle) =>
-                    setEditorState({ block, start, defaultTitle })
+                  onDuplicateBlock={handleDuplicateBlock}
+                  onOpenBlockEditor={(block, start, defaultTitle, defaultColor) =>
+                    setEditorState({ block, start, defaultTitle, defaultColor })
                   }
                   onUpdateDayRange={handleUpdateDayRange}
-                  onAddBullet={(type, text) => handleAddBullet(type, text)}
+                  onAddBullet={(type, text, color) =>
+                    handleAddBullet(type, text, activeDateKey, color)
+                  }
                   onToggleBullet={handleToggleBullet}
                   onEditBulletText={handleEditBulletText}
+                  onChangeBulletColor={handleChangeBulletColor}
+                  onDuplicateBullet={handleDuplicateBullet}
                   onMigrateBulletTomorrow={handleMigrateBulletTomorrow}
                   onDeleteBullet={handleDeleteBullet}
                   onScheduleBullet={handleScheduleBullet}
@@ -686,22 +752,22 @@ export default function App() {
           pendingBulletsCount={pendingBulletsCount}
         />
 
-        <AnimatePresence>
-          {editorState && (
-            <BlockEditorSheet
-              state={state}
-              initial={editorState.block}
-              initialTab={editorState.initialTab}
-              defaultStart={editorState.start}
-              defaultDateKey={activeDateKey}
-              defaultTitle={editorState.defaultTitle}
-              onClose={() => setEditorState(null)}
-              onAddHabit={handleAddHabit}
-              onSave={handleSaveBlock}
-              onDelete={handleDeleteBlock}
-            />
-          )}
-        </AnimatePresence>
+        {editorState && (
+          <BlockEditorSheet
+            state={state}
+            initial={editorState.block}
+            initialTab={editorState.initialTab}
+            defaultStart={editorState.start}
+            defaultDateKey={activeDateKey}
+            defaultTitle={editorState.defaultTitle}
+            defaultColor={editorState.defaultColor}
+            onClose={() => setEditorState(null)}
+            onAddHabit={handleAddHabit}
+            onSave={handleSaveBlock}
+            onDuplicate={handleDuplicateBlock}
+            onDelete={handleDeleteBlock}
+          />
+        )}
 
         <AnimatePresence>
           {syncSheetOpen && (

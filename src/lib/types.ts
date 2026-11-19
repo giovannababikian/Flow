@@ -1,4 +1,11 @@
-export type HabitColor = 'exercise' | 'dj' | 'reading' | 'focus' | 'wellness';
+export type HabitColor =
+  | 'exercise'
+  | 'dj'
+  | 'reading'
+  | 'focus'
+  | 'wellness'
+  | 'cyan'
+  | 'slate';
 
 export type BulletType = 'task' | 'event' | 'note' | 'priority';
 
@@ -14,7 +21,8 @@ export interface Habit {
 
 export interface Block {
   id: string;
-  habitId: string;
+  habitId?: string;
+  color: HabitColor;
   title: string;
   start: number; // minutes from 00:00
   duration: number; // minutes
@@ -27,6 +35,7 @@ export interface BulletItem {
   id: string;
   dateKey: string; // YYYY-MM-DD
   type: BulletType;
+  color?: HabitColor;
   text: string;
   done: boolean;
   migratedTo?: string; // YYYY-MM-DD if migrated forward

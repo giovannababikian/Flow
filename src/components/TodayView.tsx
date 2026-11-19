@@ -5,6 +5,7 @@ import {
   Check,
   Circle,
   Clock,
+  Copy,
   GripVertical,
   Minus,
   MoreHorizontal,
@@ -20,7 +21,7 @@ import {
   type FormEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import { HABIT_COLORS } from '../lib/colors.ts';
+import { HABIT_COLORS, HABIT_COLOR_KEYS } from '../lib/colors.ts';
 import {
   addDays,
   blocksForDate,
@@ -31,7 +32,7 @@ import {
   sameDay,
   startOfWeek,
 } from '../lib/dateUtils.ts';
-import type { Block, BulletItem, BulletType, PlannerState } from '../lib/types.ts';
+import type { Block, BulletItem, BulletType, HabitColor, PlannerState } from '../lib/types.ts';
 
 interface TodayViewProps {
   state: PlannerState;
@@ -40,11 +41,19 @@ interface TodayViewProps {
   onSelectDate: (d: Date) => void;
   onToggleBlockDone: (blockId: string) => void;
   onMoveBlockTime: (blockId: string, newStart: number) => void;
-  onOpenBlockEditor: (block: Block | null, startMinutes: number, defaultTitle?: string) => void;
+  onDuplicateBlock: (block: Block) => void;
+  onOpenBlockEditor: (
+    block: Block | null,
+    startMinutes: number,
+    defaultTitle?: string,
+    defaultColor?: HabitColor
+  ) => void;
   onUpdateDayRange: (start: number, end: number) => void;
-  onAddBullet: (type: BulletType, text: string) => void;
+  onAddBullet: (type: BulletType, text: string, color?: HabitColor) => void;
   onToggleBullet: (id: string) => void;
   onEditBulletText: (id: string, text: string) => void;
+  onChangeBulletColor: (id: string, color: HabitColor) => void;
+  onDuplicateBullet: (id: string) => void;
   onMigrateBulletTomorrow: (id: string) => void;
   onDeleteBullet: (id: string) => void;
   onScheduleBullet: (bullet: BulletItem) => void;
@@ -69,11 +78,14 @@ export function TodayView({
   onSelectDate,
   onToggleBlockDone,
   onMoveBlockTime,
+  onDuplicateBlock,
   onOpenBlockEditor,
   onUpdateDayRange,
   onAddBullet,
   onToggleBullet,
   onEditBulletText,
+  onChangeBulletColor,
+  onDuplicateBullet,
   onMigrateBulletTomorrow,
   onDeleteBullet,
   onScheduleBullet,
@@ -81,6 +93,8 @@ export function TodayView({
 }: TodayViewProps) {
   const [mobilePane, setMobilePane] = useState<'all' | 'bullets' | 'timeline'>('all');
   const [bulletType, setBulletType] = useState<BulletType>('task');
+  const [bulletColor, setBulletColor] = useState<HabitColor>('focus');
+  const [showCaptureColors, setShowCaptureColors] = useState(false);
   const [bulletInput, setBulletInput] = useState('');
   const [expandedBulletId, setExpandedBulletId] = useState<string | null>(null);
   const [editingBulletId, setEditingBulletId] = useState<string | null>(null);
@@ -156,7 +170,7 @@ export function TodayView({
     e.preventDefault();
     const text = bulletInput.trim();
     if (!text) return;
-    onAddBullet(bulletType, text);
+    onAddBullet(bulletType, text, bulletColor);
     setBulletInput('');
   };
 
@@ -360,6 +374,18 @@ export function TodayView({
                   className="min-h-[40px] min-w-0 flex-1 bg-transparent px-1.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-slate-500"
                 />
                 <button
+                  type="button"
+                  onClick={() => setShowCaptureColors((v) => !v)}
+                  className="grid size-10 shrink-0 place-items-center rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-700/60"
+                  title={`Cor: ${HABIT_COLORS[bulletColor].label}`}
+                  aria-label={`Escolher cor (${HABIT_COLORS[bulletColor].label})`}
+                  aria-expanded={showCaptureColors}
+                >
+                  <span
+                    className={`size-4 rounded-full ring-2 ring-white dark:ring-slate-900 ${HABIT_COLORS[bulletColor].dot}`}
+                  />
+                </button>
+                <button
                   type="submit"
                   className="grid size-10 shrink-0 place-items-center rounded-lg bg-slate-900 text-white transition-transform active:scale-95 dark:bg-blue-600"
                   aria-label="Adicionar bullet"
@@ -367,6 +393,33 @@ export function TodayView({
                   <Plus className="size-4" />
                 </button>
               </div>
+
+              {showCaptureColors && (
+                <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-2.5 py-2 dark:bg-slate-800/60">
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    Cor
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {HABIT_COLOR_KEYS.map((key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          setBulletColor(key);
+                          setShowCaptureColors(false);
+                        }}
+                        className={`size-6 rounded-full transition-transform active:scale-90 ${HABIT_COLORS[key].dot} ${
+                          bulletColor === key
+                            ? 'ring-2 ring-slate-900 ring-offset-2 ring-offset-slate-50 dark:ring-white dark:ring-offset-slate-900'
+                            : 'opacity-70 hover:opacity-100'
+                        }`}
+                        aria-label={`Cor ${HABIT_COLORS[key].label}`}
+                        title={HABIT_COLORS[key].label}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
                 {(Object.keys(BULLET_META) as BulletType[]).map((t) => (
@@ -398,6 +451,8 @@ export function TodayView({
                 <AnimatePresence initial={false}>
                   {dayBullets.map((item) => {
                     const isExpanded = expandedBulletId === item.id;
+                    const itemColorKey: HabitColor = item.color ?? 'focus';
+                    const itemStyle = HABIT_COLORS[itemColorKey];
                     return (
                       <motion.div
                         key={item.id}
@@ -416,17 +471,19 @@ export function TodayView({
                             aria-label={item.done ? 'Marcar como pendente' : 'Concluir bullet'}
                           >
                             {item.done ? (
-                              <span className="grid size-5 place-items-center rounded-md bg-slate-900 text-white dark:bg-blue-600">
+                              <span
+                                className={`grid size-5 place-items-center rounded-md ${itemStyle.bg} ${itemStyle.doneText}`}
+                              >
                                 <Check className="size-3.5" strokeWidth={3} />
                               </span>
                             ) : item.type === 'priority' ? (
-                              <Sparkles className="size-4 text-amber-500" />
+                              <Sparkles className={`size-4 ${itemStyle.text}`} />
                             ) : item.type === 'event' ? (
-                              <Circle className="size-4 text-blue-600 dark:text-blue-400" />
+                              <Circle className={`size-4 ${itemStyle.text}`} />
                             ) : item.type === 'note' ? (
-                              <Minus className="size-4 text-slate-400" />
+                              <Minus className={`size-4 ${itemStyle.text}`} />
                             ) : (
-                              <span className="size-2.5 rounded-full bg-slate-900 dark:bg-slate-200" />
+                              <span className={`size-2.5 rounded-full ${itemStyle.dot}`} />
                             )}
                           </button>
 
@@ -493,55 +550,84 @@ export function TodayView({
 
                         {/* Clean Contextual Action Bar (saves horizontal space on mobile!) */}
                         {isExpanded && (
-                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-12">
-                            {!item.done && item.type !== 'note' && (
-                              <>
+                          <div className="mt-1.5 space-y-2 pl-12">
+                            <div className="flex items-center gap-2">
+                              {HABIT_COLOR_KEYS.map((key) => (
                                 <button
+                                  key={key}
                                   type="button"
-                                  onClick={() => {
-                                    setExpandedBulletId(null);
-                                    onStartFocus(item.text, 25, { bulletId: item.id });
-                                  }}
-                                  className="flex min-h-[36px] items-center gap-1 rounded-lg bg-slate-100 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200"
-                                >
-                                  <Play className="size-3" />
-                                  <span>Focar</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setExpandedBulletId(null);
-                                    onScheduleBullet(item);
-                                  }}
-                                  className="flex min-h-[36px] items-center gap-1 rounded-lg bg-slate-100 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200"
-                                >
-                                  <CalendarPlus className="size-3" />
-                                  <span>Agendar</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setExpandedBulletId(null);
-                                    onMigrateBulletTomorrow(item.id);
-                                  }}
-                                  className="flex min-h-[36px] items-center gap-1 rounded-lg bg-slate-100 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200"
-                                >
-                                  <ArrowRight className="size-3" />
-                                  <span>Amanhã</span>
-                                </button>
-                              </>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setExpandedBulletId(null);
-                                onDeleteBullet(item.id);
-                              }}
-                              className="flex min-h-[36px] items-center gap-1 rounded-lg bg-rose-50 px-2.5 text-xs font-medium text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400"
-                            >
-                              <Trash2 className="size-3" />
-                              <span>Excluir</span>
-                            </button>
+                                  onClick={() => onChangeBulletColor(item.id, key)}
+                                  className={`size-5 rounded-full transition-transform active:scale-90 ${HABIT_COLORS[key].dot} ${
+                                    itemColorKey === key
+                                      ? 'ring-2 ring-slate-900 ring-offset-2 ring-offset-white dark:ring-white dark:ring-offset-slate-900'
+                                      : 'opacity-65 hover:opacity-100'
+                                  }`}
+                                  aria-label={`Cor ${HABIT_COLORS[key].label}`}
+                                  title={HABIT_COLORS[key].label}
+                                />
+                              ))}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {!item.done && item.type !== 'note' && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setExpandedBulletId(null);
+                                      onStartFocus(item.text, 25, { bulletId: item.id });
+                                    }}
+                                    className="flex min-h-[36px] items-center gap-1 rounded-lg bg-slate-100 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200"
+                                  >
+                                    <Play className="size-3" />
+                                    <span>Focar</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setExpandedBulletId(null);
+                                      onScheduleBullet(item);
+                                    }}
+                                    className="flex min-h-[36px] items-center gap-1 rounded-lg bg-slate-100 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200"
+                                  >
+                                    <CalendarPlus className="size-3" />
+                                    <span>Agendar</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setExpandedBulletId(null);
+                                      onMigrateBulletTomorrow(item.id);
+                                    }}
+                                    className="flex min-h-[36px] items-center gap-1 rounded-lg bg-slate-100 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200"
+                                  >
+                                    <ArrowRight className="size-3" />
+                                    <span>Amanhã</span>
+                                  </button>
+                                </>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setExpandedBulletId(null);
+                                  onDuplicateBullet(item.id);
+                                }}
+                                className="flex min-h-[36px] items-center gap-1 rounded-lg bg-slate-100 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200"
+                              >
+                                <Copy className="size-3" />
+                                <span>Duplicar</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setExpandedBulletId(null);
+                                  onDeleteBullet(item.id);
+                                }}
+                                className="flex min-h-[36px] items-center gap-1 rounded-lg bg-rose-50 px-2.5 text-xs font-medium text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400"
+                              >
+                                <Trash2 className="size-3" />
+                                <span>Excluir</span>
+                              </button>
+                            </div>
                           </div>
                         )}
                       </motion.div>
@@ -611,19 +697,22 @@ export function TodayView({
               })}
 
               {visibleBlocks.map((block) => {
-                const habit = state.habits.find((h) => h.id === block.habitId);
-                if (!habit) return null;
-                const c = HABIT_COLORS[habit.color];
+                const habit = block.habitId
+                  ? state.habits.find((h) => h.id === block.habitId)
+                  : undefined;
+                const blockColor = block.color ?? habit?.color ?? 'focus';
+                const c = HABIT_COLORS[blockColor];
                 const isDone = doneSet.has(block.id);
                 const renderedStart =
                   draggedBlockId === block.id && dragPreviewStart !== null
                     ? dragPreviewStart
                     : block.start;
+                const mark = habit?.mark ?? (block.title.charAt(0).toUpperCase() || '•');
 
                 return (
                   <div
                     key={block.id}
-                    className={`absolute left-2 right-0 z-10 flex items-center justify-between gap-1.5 overflow-hidden rounded-xl pr-2 transition-shadow sm:left-3 sm:pr-2.5 ${
+                    className={`absolute left-2 right-0 z-10 flex items-center justify-between gap-1 overflow-hidden rounded-xl pr-1.5 transition-shadow sm:left-3 sm:gap-1.5 sm:pr-2.5 ${
                       draggedBlockId === block.id ? 'z-30 shadow-xl ring-2 ring-blue-600' : ''
                     } ${
                       isDone
@@ -641,7 +730,7 @@ export function TodayView({
                       onPointerMove={updateDrag}
                       onPointerUp={finishDrag}
                       onPointerCancel={cancelDrag}
-                      className="grid h-full w-10 shrink-0 cursor-grab touch-none place-items-center border-r border-black/10 opacity-55 hover:opacity-100 active:cursor-grabbing dark:border-white/10"
+                      className="grid h-full w-8 shrink-0 cursor-grab touch-none place-items-center border-r border-black/10 opacity-55 hover:opacity-100 active:cursor-grabbing sm:w-10 dark:border-white/10"
                       aria-label={`Mover ${block.title}`}
                       title="Arrastar para alterar horário"
                     >
@@ -658,7 +747,7 @@ export function TodayView({
                           isDone ? 'bg-black/15' : `${c.bg} ${c.doneText}`
                         }`}
                       >
-                        {habit.mark}
+                        {mark}
                       </span>
                       <span className="min-w-0">
                         <span className="block truncate font-display text-sm font-semibold">
@@ -672,6 +761,15 @@ export function TodayView({
                     </button>
 
                     <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => onDuplicateBlock(block)}
+                        className="grid size-8 place-items-center rounded-lg bg-white/75 text-slate-700 hover:bg-white sm:size-9 dark:bg-slate-900/60 dark:text-slate-200"
+                        title="Duplicar tarefa"
+                        aria-label={`Duplicar ${block.title}`}
+                      >
+                        <Copy className="size-3.5" />
+                      </button>
                       {!isDone && (
                         <button
                           type="button"
@@ -681,7 +779,7 @@ export function TodayView({
                               habitId: block.habitId,
                             })
                           }
-                          className="grid size-9 place-items-center rounded-lg bg-white/75 text-slate-700 hover:bg-white dark:bg-slate-900/60 dark:text-slate-200"
+                          className="grid size-8 place-items-center rounded-lg bg-white/75 text-slate-700 hover:bg-white sm:size-9 dark:bg-slate-900/60 dark:text-slate-200"
                           title="Iniciar cronômetro de foco"
                           aria-label={`Focar em ${block.title}`}
                         >
@@ -691,7 +789,7 @@ export function TodayView({
                       <button
                         type="button"
                         onClick={() => onToggleBlockDone(block.id)}
-                        className={`grid size-9 place-items-center rounded-lg text-sm font-bold transition-transform active:scale-90 ${
+                        className={`grid size-8 place-items-center rounded-lg text-sm font-bold transition-transform active:scale-90 sm:size-9 ${
                           isDone
                             ? 'bg-white/25 text-current'
                             : 'bg-white text-slate-800 shadow-2xs ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700'

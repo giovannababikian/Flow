@@ -12,7 +12,8 @@ import {
   WifiOff,
   X,
 } from 'lucide-react';
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { createPortal } from 'react-dom';
 import type { CloudBackupMeta, PlannerState, SyncStatus } from '../lib/types.ts';
 import { usePWAInstall } from '../lib/usePWAInstall.ts';
 
@@ -50,6 +51,14 @@ export function SyncBackupSheet({
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   const handleCopyKey = async () => {
     try {
@@ -133,13 +142,13 @@ export function SyncBackupSheet({
       })
     : 'Ainda não sincronizado';
 
-  return (
+  const modalContent = (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.15 }}
-      className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden bg-slate-950/50 sm:items-center sm:p-4"
+      className="fixed inset-0 z-[100] flex items-end justify-center overflow-hidden bg-slate-950/50 sm:items-center sm:p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -352,4 +361,7 @@ export function SyncBackupSheet({
       </motion.div>
     </motion.div>
   );
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(modalContent, document.body);
 }
