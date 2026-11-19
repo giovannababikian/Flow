@@ -134,19 +134,23 @@ export function SyncBackupSheet({
     : 'Ainda não sincronizado';
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 backdrop-blur-xs sm:items-center sm:p-4"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden bg-slate-950/50 sm:items-center sm:p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Sincronização em tempo real e backup em nuvem"
     >
       <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 24 }}
+        initial={{ y: 28, opacity: 0.9 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 28, opacity: 0 }}
         transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-        className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:rounded-2xl sm:p-6 dark:border-slate-800 dark:bg-slate-900"
+        className="max-h-[88dvh] w-full max-w-lg overflow-x-hidden overflow-y-auto overscroll-contain rounded-t-3xl border border-slate-200 bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl sm:p-6 dark:border-slate-800 dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-300 sm:hidden dark:bg-slate-700" />
@@ -300,8 +304,7 @@ export function SyncBackupSheet({
                       hour: '2-digit',
                       minute: '2-digit',
                     })}{' '}
-                    · {b.itemCounts.blocks} blocos · {b.itemCounts.bullets} bullets ·{' '}
-                    {b.itemCounts.notes} notas
+                    · {b.itemCounts.blocks} blocos · {b.itemCounts.bullets} bullets
                   </p>
                 </div>
                 <button
@@ -347,6 +350,6 @@ export function SyncBackupSheet({
           </div>
         </div>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }

@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { Trash2, X } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { HABIT_COLORS, HABIT_COLOR_KEYS } from '../lib/colors.ts';
 import { ALL_DAYS, DAY_SHORT, fmtTime, frequencyLabel, parseTime, uid } from '../lib/dateUtils.ts';
 import type { Block, HabitColor, PlannerState } from '../lib/types.ts';
@@ -48,6 +48,20 @@ export function BlockEditorSheet({
   const [habitName, setHabitName] = useState('');
   const [habitColor, setHabitColor] = useState<HabitColor>('focus');
 
+  // Lock background scroll while sheet is open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [onClose]);
+
   const endMin = parseTime(start) + Math.max(5, Number(duration || 0));
 
   const handleSaveBlock = (e: FormEvent) => {
@@ -84,24 +98,28 @@ export function BlockEditorSheet({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 backdrop-blur-xs sm:items-center sm:p-4"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden bg-slate-950/50 sm:items-center sm:p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={initial ? 'Editar atividade' : 'Agendar atividade'}
     >
       <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 24 }}
+        initial={{ y: 28, opacity: 0.9 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 28, opacity: 0 }}
         transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-        className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-slate-200/80 bg-white p-5 shadow-2xl sm:rounded-2xl sm:p-6 dark:border-slate-800 dark:bg-slate-900"
+        className="max-h-[88dvh] w-full max-w-md overflow-x-hidden overflow-y-auto overscroll-contain rounded-t-3xl border border-slate-200/80 bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl sm:p-6 dark:border-slate-800 dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-300 sm:hidden dark:bg-slate-700" />
 
-        <div className="mb-5 flex items-center justify-between gap-3">
+        <div className="mb-4 flex items-center justify-between gap-2">
           <div className="flex rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
             <button
               type="button"
@@ -132,7 +150,7 @@ export function BlockEditorSheet({
           <button
             type="button"
             onClick={onClose}
-            className="grid size-10 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            className="grid size-10 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             aria-label="Fechar"
           >
             <X className="size-4" />
@@ -141,28 +159,27 @@ export function BlockEditorSheet({
 
         {mode === 'block' && (
           <form onSubmit={handleSaveBlock} className="flex flex-col gap-4">
-            <label className="flex flex-col gap-1.5">
+            <label className="flex min-w-0 flex-col gap-1.5">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 Atividade
               </span>
               <input
-                autoFocus
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Ex.: Revisão de projeto ou Corrida"
-                className="min-h-[44px] rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 text-sm text-slate-900 outline-none focus:border-blue-600 focus:bg-white dark:border-slate-700 dark:bg-slate-800/70 dark:text-white dark:focus:border-blue-400 dark:focus:bg-slate-950"
+                className="min-h-[44px] w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 text-base text-slate-900 outline-none focus:border-blue-600 focus:bg-white sm:text-sm dark:border-slate-700 dark:bg-slate-800/70 dark:text-white dark:focus:border-blue-400 dark:focus:bg-slate-950"
               />
             </label>
 
             {state.habits.length > 0 ? (
-              <label className="flex flex-col gap-1.5">
+              <label className="flex min-w-0 flex-col gap-1.5">
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   Categoria / Hábito
                 </span>
                 <select
                   value={habitId}
                   onChange={(e) => setHabitId(e.target.value)}
-                  className="min-h-[44px] rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 text-sm text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-800/70 dark:text-white"
+                  className="min-h-[44px] w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 text-base text-slate-900 outline-none focus:border-blue-600 sm:text-sm dark:border-slate-700 dark:bg-slate-800/70 dark:text-white"
                 >
                   {state.habits.map((h) => (
                     <option key={h.id} value={h.id}>
@@ -174,39 +191,37 @@ export function BlockEditorSheet({
             ) : (
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Criar categoria inicial
+                  Categoria inicial
                 </span>
-                <div className="flex items-center gap-2">
-                  <input
-                    value={inlineHabitName}
-                    onChange={(e) => setInlineHabitName(e.target.value)}
-                    placeholder="Ex.: Foco, Saúde, Estudo"
-                    className="min-h-[44px] min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50/70 px-3 text-sm text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-800/70 dark:text-white"
-                  />
-                  <div className="flex shrink-0 gap-1.5">
-                    {HABIT_COLOR_KEYS.map((key) => {
-                      const cfg = HABIT_COLORS[key];
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setInlineHabitColor(key)}
-                          className={`size-7 rounded-lg transition-transform ${cfg.bg} ${
-                            inlineHabitColor === key
-                              ? 'ring-2 ring-slate-900 ring-offset-2 ring-offset-white dark:ring-white dark:ring-offset-slate-900'
-                              : 'opacity-65 hover:opacity-100'
-                          }`}
-                          aria-label={cfg.label}
-                        />
-                      );
-                    })}
-                  </div>
+                <input
+                  value={inlineHabitName}
+                  onChange={(e) => setInlineHabitName(e.target.value)}
+                  placeholder="Ex.: Foco, Saúde, Estudo (opcional)"
+                  className="min-h-[44px] w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 text-base text-slate-900 outline-none focus:border-blue-600 sm:text-sm dark:border-slate-700 dark:bg-slate-800/70 dark:text-white"
+                />
+                <div className="flex items-center gap-2 pt-0.5">
+                  {HABIT_COLOR_KEYS.map((key) => {
+                    const cfg = HABIT_COLORS[key];
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setInlineHabitColor(key)}
+                        className={`size-8 rounded-lg transition-transform ${cfg.bg} ${
+                          inlineHabitColor === key
+                            ? 'ring-2 ring-slate-900 ring-offset-2 ring-offset-white dark:ring-white dark:ring-offset-slate-900'
+                            : 'opacity-65 hover:opacity-100'
+                        }`}
+                        aria-label={cfg.label}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-3">
-              <label className="flex flex-col gap-1.5">
+              <label className="flex min-w-0 flex-col gap-1.5">
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   Início
                 </span>
@@ -215,11 +230,11 @@ export function BlockEditorSheet({
                   step={300}
                   value={start}
                   onChange={(e) => setStart(e.target.value)}
-                  className="min-h-[44px] rounded-xl border border-slate-200 bg-slate-50/70 px-3 font-mono text-sm tabular-nums text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-800/70 dark:text-white"
+                  className="min-h-[44px] w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 px-3 font-mono text-base tabular-nums text-slate-900 outline-none focus:border-blue-600 sm:text-sm dark:border-slate-700 dark:bg-slate-800/70 dark:text-white"
                 />
               </label>
 
-              <label className="flex flex-col gap-1.5">
+              <label className="flex min-w-0 flex-col gap-1.5">
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   Duração (min)
                 </span>
@@ -230,12 +245,12 @@ export function BlockEditorSheet({
                   step={5}
                   value={duration}
                   onChange={(e) => setDuration(Number(e.target.value))}
-                  className="min-h-[44px] rounded-xl border border-slate-200 bg-slate-50/70 px-3 font-mono text-sm tabular-nums text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-800/70 dark:text-white"
+                  className="min-h-[44px] w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 px-3 font-mono text-base tabular-nums text-slate-900 outline-none focus:border-blue-600 sm:text-sm dark:border-slate-700 dark:bg-slate-800/70 dark:text-white"
                 />
               </label>
             </div>
 
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
               <span>
                 Termina às{' '}
                 <strong className="font-mono tabular-nums text-slate-800 dark:text-slate-200">
@@ -248,7 +263,7 @@ export function BlockEditorSheet({
                     key={preset}
                     type="button"
                     onClick={() => setDuration(preset)}
-                    className={`rounded-md px-2 py-1 font-mono text-[11px] font-medium tabular-nums transition-colors ${
+                    className={`min-h-[32px] rounded-md px-2.5 font-mono text-xs font-medium tabular-nums transition-colors ${
                       duration === preset
                         ? 'bg-slate-900 text-white dark:bg-blue-600'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
@@ -261,7 +276,7 @@ export function BlockEditorSheet({
             </div>
 
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   Frequência
                 </span>
@@ -269,7 +284,7 @@ export function BlockEditorSheet({
                   <button
                     type="button"
                     onClick={() => setScheduleType('recurring')}
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    className={`min-h-[32px] rounded-md px-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
                       scheduleType === 'recurring'
                         ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-950 dark:text-white'
                         : 'text-slate-500 dark:text-slate-400'
@@ -280,7 +295,7 @@ export function BlockEditorSheet({
                   <button
                     type="button"
                     onClick={() => setScheduleType('once')}
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    className={`min-h-[32px] rounded-md px-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
                       scheduleType === 'once'
                         ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-950 dark:text-white'
                         : 'text-slate-500 dark:text-slate-400'
@@ -328,7 +343,7 @@ export function BlockEditorSheet({
               )}
             </div>
 
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-1 flex items-center gap-2 pb-2">
               {initial && (
                 <button
                   type="button"
@@ -353,17 +368,16 @@ export function BlockEditorSheet({
         )}
 
         {mode === 'habit' && (
-          <form onSubmit={handleCreateHabit} className="flex flex-col gap-4">
-            <label className="flex flex-col gap-1.5">
+          <form onSubmit={handleCreateHabit} className="flex flex-col gap-4 pb-2">
+            <label className="flex min-w-0 flex-col gap-1.5">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 Nome do hábito
               </span>
               <input
-                autoFocus
                 value={habitName}
                 onChange={(e) => setHabitName(e.target.value)}
                 placeholder="Ex.: Meditação, Inglês, Exercício"
-                className="min-h-[44px] rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 text-sm text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-800/70 dark:text-white"
+                className="min-h-[44px] w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 text-base text-slate-900 outline-none focus:border-blue-600 sm:text-sm dark:border-slate-700 dark:bg-slate-800/70 dark:text-white"
               />
             </label>
 
@@ -401,6 +415,6 @@ export function BlockEditorSheet({
           </form>
         )}
       </motion.div>
-    </div>
+    </motion.div>
   );
 }

@@ -73,7 +73,6 @@ function listBackups(id: string): CloudBackupMeta[] {
         itemCounts: {
           blocks: parsed.state.blocks?.length ?? 0,
           bullets: parsed.state.bullets?.length ?? 0,
-          notes: parsed.state.notes?.length ?? 0,
           focusSessions: parsed.state.focusSessions?.length ?? 0,
         },
       });
@@ -110,7 +109,6 @@ function createBackupSnapshot(id: string, state: PlannerState, label: string): C
     itemCounts: {
       blocks: state.blocks?.length ?? 0,
       bullets: state.bullets?.length ?? 0,
-      notes: state.notes?.length ?? 0,
       focusSessions: state.focusSessions?.length ?? 0,
     },
   };

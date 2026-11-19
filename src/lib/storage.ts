@@ -13,11 +13,11 @@ const LS_THEME_KEY = 'rhythm_flow_theme';
 export function createInitialState(): PlannerState {
   const now = Date.now();
   return {
-    version: 2,
+    version: 3,
     habits: [],
     blocks: [],
     bullets: [],
-    notes: [],
+    customTimers: [],
     focusSessions: [],
     completions: {},
     completionsUpdatedAt: {},
@@ -56,7 +56,7 @@ export function loadLocalStateSync(): PlannerState {
           ...createInitialState(),
           ...parsed,
           bullets: parsed.bullets ?? [],
-          notes: parsed.notes ?? [],
+          customTimers: parsed.customTimers ?? [],
           focusSessions: parsed.focusSessions ?? [],
           deletedIds: parsed.deletedIds ?? {},
           completionsUpdatedAt: parsed.completionsUpdatedAt ?? {},

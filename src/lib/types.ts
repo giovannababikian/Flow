@@ -2,7 +2,7 @@ export type HabitColor = 'exercise' | 'dj' | 'reading' | 'focus' | 'wellness';
 
 export type BulletType = 'task' | 'event' | 'note' | 'priority';
 
-export type AppScreen = 'today' | 'notes' | 'focus' | 'calendar';
+export type AppScreen = 'today' | 'focus';
 
 export interface Habit {
   id: string;
@@ -30,7 +30,7 @@ export interface BulletItem {
   text: string;
   done: boolean;
   migratedTo?: string; // YYYY-MM-DD if migrated forward
-  blockId?: string; // linked timeline block
+  blockId?: string;
   timeMinutes?: number;
   durationMinutes?: number;
   order: number;
@@ -38,13 +38,10 @@ export interface BulletItem {
   updatedAt: number;
 }
 
-export interface NoteDoc {
+export interface CustomTimer {
   id: string;
-  title: string;
-  content: string;
-  folder: string;
-  pinned: boolean;
-  createdAt: number;
+  label: string;
+  minutes: number;
   updatedAt: number;
 }
 
@@ -70,7 +67,7 @@ export interface PlannerState {
   habits: Habit[];
   blocks: Block[];
   bullets: BulletItem[];
-  notes: NoteDoc[];
+  customTimers: CustomTimer[];
   focusSessions: FocusSession[];
   completions: Record<string, string[]>;
   completionsUpdatedAt: Record<string, number>;
@@ -87,7 +84,6 @@ export interface CloudBackupMeta {
   itemCounts: {
     blocks: number;
     bullets: number;
-    notes: number;
     focusSessions: number;
   };
 }

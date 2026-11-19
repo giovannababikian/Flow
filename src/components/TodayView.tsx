@@ -24,9 +24,7 @@ import { HABIT_COLORS } from '../lib/colors.ts';
 import {
   addDays,
   blocksForDate,
-  computeTimeBudget,
   dateKey,
-  fmtDuration,
   fmtTime,
   frequencyLabel,
   parseTime,
@@ -129,8 +127,6 @@ export function TodayView({
     () => new Set(state.completions[activeKey] ?? []),
     [state.completions, activeKey]
   );
-
-  const budget = useMemo(() => computeTimeBudget(state, displayDate), [state, displayDate]);
 
   const handleBulletInputChange = (val: string) => {
     if (val === '! ') {
@@ -243,10 +239,11 @@ export function TodayView({
                 month: 'short',
               })}
             </h1>
-            <p className="mt-0.5 font-mono text-xs tabular-nums text-slate-500 dark:text-slate-400">
-              {fmtDuration(budget.plannedMinutes)} planejado · {fmtDuration(budget.freeMinutes)} livre ·{' '}
-              {budget.focusedMinutes}m focado
-            </p>
+            {(dayBullets.length > 0 || visibleBlocks.length > 0) && (
+              <p className="mt-0.5 font-mono text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                {dayBullets.filter((b) => !b.done).length} pendentes · {visibleBlocks.length} blocos
+              </p>
+            )}
           </div>
 
           {!isToday && (
@@ -579,7 +576,7 @@ export function TodayView({
 
             <div
               ref={timelineRef}
-              className={`relative ml-12 border-l border-slate-200/80 sm:ml-14 dark:border-slate-800 ${
+              className={`relative mb-3 ml-12 border-l border-slate-200/80 sm:ml-14 dark:border-slate-800 ${
                 draggedBlockId ? 'select-none' : ''
               }`}
               style={{ height: timelineHeight }}
@@ -591,20 +588,27 @@ export function TodayView({
               {Array.from(
                 { length: Math.floor(rangeSpan / 60) + 1 },
                 (_, i) => state.dayRange.start + i * 60
-              ).map((minute) => (
-                <button
-                  key={minute}
-                  type="button"
-                  onClick={() => onOpenBlockEditor(null, minute)}
-                  className="group absolute left-0 right-0 h-11 border-t border-slate-100 text-left transition-colors hover:bg-slate-50/80 dark:border-slate-800/80 dark:hover:bg-slate-800/30"
-                  style={{ top: `${((minute - state.dayRange.start) / rangeSpan) * 100}%` }}
-                  aria-label={`Agendar às ${fmtTime(minute)}`}
-                >
-                  <span className="absolute -left-12 w-10 -translate-y-1/2 text-right font-mono text-[11px] font-medium tabular-nums text-slate-400 group-hover:text-blue-600 sm:-left-14 sm:w-11 sm:text-xs dark:text-slate-500">
-                    {fmtTime(minute)}
-                  </span>
-                </button>
-              ))}
+              ).map((minute) => {
+                const isLast = minute >= state.dayRange.end;
+                return (
+                  <button
+                    key={minute}
+                    type="button"
+                    onClick={() =>
+                      onOpenBlockEditor(null, isLast ? Math.max(state.dayRange.start, minute - 60) : minute)
+                    }
+                    className={`group absolute left-0 right-0 border-t border-slate-100 text-left transition-colors hover:bg-slate-50/80 dark:border-slate-800/80 dark:hover:bg-slate-800/30 ${
+                      isLast ? 'h-5' : 'h-12'
+                    }`}
+                    style={{ top: `${((minute - state.dayRange.start) / rangeSpan) * 100}%` }}
+                    aria-label={`Agendar às ${fmtTime(minute)}`}
+                  >
+                    <span className="absolute -left-12 w-10 -translate-y-1/2 text-right font-mono text-[11px] font-medium tabular-nums text-slate-400 group-hover:text-blue-600 sm:-left-14 sm:w-11 sm:text-xs dark:text-slate-500">
+                      {fmtTime(minute)}
+                    </span>
+                  </button>
+                );
+              })}
 
               {visibleBlocks.map((block) => {
                 const habit = state.habits.find((h) => h.id === block.habitId);

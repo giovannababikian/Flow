@@ -134,25 +134,3 @@ export function weekSummary(state: PlannerState, referenceDate = new Date()) {
     };
   });
 }
-
-export function computeTimeBudget(state: PlannerState, date: Date) {
-  const key = dateKey(date);
-  const blocks = blocksForDate(state.blocks, date);
-  const totalDayMinutes = Math.max(60, state.dayRange.end - state.dayRange.start);
-  const plannedMinutes = blocks.reduce((acc, b) => acc + b.duration, 0);
-  const doneIds = new Set(state.completions[key] ?? []);
-  const completedBlockMinutes = blocks
-    .filter((b) => doneIds.has(b.id))
-    .reduce((acc, b) => acc + b.duration, 0);
-  const focusedSeconds = state.focusSessions
-    .filter((s) => s.dateKey === key)
-    .reduce((acc, s) => acc + s.durationSeconds, 0);
-  const freeMinutes = Math.max(0, totalDayMinutes - plannedMinutes);
-  return {
-    totalDayMinutes,
-    plannedMinutes,
-    completedBlockMinutes,
-    focusedMinutes: Math.round(focusedSeconds / 60),
-    freeMinutes,
-  };
-}

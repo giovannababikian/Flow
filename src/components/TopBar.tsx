@@ -14,9 +14,7 @@ interface TopBarProps {
 
 const NAV_ITEMS: { id: AppScreen; label: string }[] = [
   { id: 'today', label: 'Hoje' },
-  { id: 'notes', label: 'Notas' },
   { id: 'focus', label: 'Foco' },
-  { id: 'calendar', label: 'Agenda' },
 ];
 
 export function TopBar({
@@ -45,11 +43,10 @@ export function TopBar({
   return (
     <header className="sticky top-0 z-30 h-14 border-b border-slate-200/80 bg-[#F6F7F9]/90 backdrop-blur-md dark:border-slate-800/80 dark:bg-[#0B0F17]/90">
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4 sm:gap-8 sm:px-6">
-        {/* Zone 1: Single-line Brand Wordmark */}
         <button
           type="button"
           onClick={() => onNavigate('today')}
-          className="flex min-h-[44px] shrink-0 items-center gap-2.5 whitespace-nowrap text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-lg"
+          className="flex min-h-[44px] shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
         >
           <span className="grid size-8 place-items-center rounded-lg bg-slate-900 font-display text-sm font-extrabold text-white dark:bg-slate-100 dark:text-slate-950">
             R
@@ -59,7 +56,6 @@ export function TopBar({
           </span>
         </button>
 
-        {/* Zone 2: Desktop Single-line Text Navigation */}
         <nav className="hidden items-center gap-7 md:flex" aria-label="Navegação principal">
           {NAV_ITEMS.map((item) => {
             const active = screen === item.id;
@@ -68,7 +64,7 @@ export function TopBar({
                 key={item.id}
                 type="button"
                 onClick={() => onNavigate(item.id)}
-                className={`relative whitespace-nowrap shrink-0 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded ${
+                className={`relative shrink-0 whitespace-nowrap rounded py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
                   active
                     ? 'text-slate-950 dark:text-white'
                     : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
@@ -83,12 +79,11 @@ export function TopBar({
           })}
         </nav>
 
-        {/* Zone 3: Real Sync Trigger, Theme Switch & Primary Action */}
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <button
             type="button"
             onClick={onOpenSync}
-            className="flex min-h-[44px] items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-white whitespace-nowrap shrink-0"
+            className="flex min-h-[44px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-white"
             title="Sincronização em tempo real e backups em nuvem"
             aria-label="Sincronização e backup"
           >
@@ -115,11 +110,11 @@ export function TopBar({
           <button
             type="button"
             onClick={onQuickAdd}
-            className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 text-sm font-semibold text-white transition-transform hover:bg-slate-800 active:scale-[0.97] dark:bg-blue-600 dark:hover:bg-blue-500 whitespace-nowrap"
-            aria-label="Nova atividade"
+            className="flex min-h-[44px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl bg-slate-900 px-3.5 text-sm font-semibold text-white transition-transform hover:bg-slate-800 active:scale-[0.97] dark:bg-blue-600 dark:hover:bg-blue-500"
+            aria-label="Novo bloco"
           >
             <Plus className="size-4" />
-            <span className="hidden sm:inline">Agendar</span>
+            <span className="hidden sm:inline">Novo bloco</span>
           </button>
         </div>
       </div>

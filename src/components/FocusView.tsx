@@ -1,12 +1,10 @@
-import { CheckCircle2, Pause, Play, Plus, RotateCcw } from 'lucide-react';
-import { useMemo } from 'react';
+import { CheckCircle2, Pause, Play, Plus, RotateCcw, X } from 'lucide-react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { HABIT_COLORS } from '../lib/colors.ts';
 import {
   blocksForDate,
-  computeTimeBudget,
   dateKey,
   fmtCountdown,
-  fmtDuration,
   habitStreak,
   weekSummary,
 } from '../lib/dateUtils.ts';
@@ -26,7 +24,9 @@ interface FocusViewProps {
   state: PlannerState;
   displayDate: Date;
   timer: ActiveTimerState;
-  onSetPreset: (minutes: number) => void;
+  onSetPreset: (minutes: number, label?: string) => void;
+  onCreateCustomTimer: (minutes: number, label: string) => void;
+  onDeleteCustomTimer: (id: string) => void;
   onSelectTarget: (
     title: string,
     durationMinutes: number,
@@ -38,17 +38,25 @@ interface FocusViewProps {
   onOpenNewHabit: () => void;
 }
 
+const DEFAULT_PRESETS = [15, 25, 50];
+
 export function FocusView({
   state,
   displayDate,
   timer,
   onSetPreset,
+  onCreateCustomTimer,
+  onDeleteCustomTimer,
   onSelectTarget,
   onToggleRun,
   onResetTimer,
   onCompleteSession,
   onOpenNewHabit,
 }: FocusViewProps) {
+  const [creatingTimer, setCreatingTimer] = useState(false);
+  const [newMinutes, setNewMinutes] = useState('30');
+  const [newLabel, setNewLabel] = useState('');
+
   const activeKey = dateKey(displayDate);
   const todayBlocks = useMemo(
     () => blocksForDate(state.blocks, displayDate),
@@ -59,7 +67,6 @@ export function FocusView({
     [state.bullets, activeKey]
   );
 
-  const budget = useMemo(() => computeTimeBudget(state, displayDate), [state, displayDate]);
   const week = useMemo(() => weekSummary(state, displayDate), [state, displayDate]);
   const weekPct = Math.round(
     (week.reduce((a, d) => a + d.done, 0) /
@@ -76,38 +83,144 @@ export function FocusView({
   const radius = 84;
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference * (1 - progress);
+  const currentMinutes = Math.round(timer.totalSeconds / 60);
+
+  const handleSaveCustomTimer = (e: FormEvent) => {
+    e.preventDefault();
+    const mins = Math.max(1, Math.min(360, Math.round(Number(newMinutes))));
+    if (!Number.isFinite(mins) || mins <= 0) return;
+    const label = newLabel.trim() || `Timer ${mins}`;
+    onCreateCustomTimer(mins, label);
+    setNewLabel('');
+    setNewMinutes('30');
+    setCreatingTimer(false);
+  };
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-      {/* Left: Time Management & Focus Timer */}
+      {/* Left: Focus Timer */}
       <div className="space-y-5">
         <section className="rounded-2xl border border-slate-200/70 bg-white p-5 sm:p-6 dark:border-slate-800/80 dark:bg-slate-900">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h1 className="font-display text-lg font-bold text-slate-900 dark:text-white">
-                Tempo & Foco
+                Timer
               </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Cronômetro integrado ao seu orçamento diário
-              </p>
             </div>
-            <div className="flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
-              {[15, 25, 50].map((m) => (
+
+            <div className="flex flex-wrap items-center gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
+              {DEFAULT_PRESETS.map((m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => onSetPreset(m)}
-                  className={`min-h-[34px] rounded-md px-2.5 font-mono text-xs font-semibold tabular-nums transition-colors ${
-                    Math.round(timer.totalSeconds / 60) === m
+                  className={`min-h-[36px] min-w-[38px] rounded-md px-2.5 font-mono text-xs font-semibold tabular-nums transition-colors ${
+                    currentMinutes === m && !state.customTimers.some((ct) => ct.label === timer.title)
                       ? 'bg-white text-slate-900 shadow-2xs dark:bg-slate-950 dark:text-white'
-                      : 'text-slate-500 dark:text-slate-400'
+                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                   }`}
                 >
-                  {m}m
+                  {m}
                 </button>
               ))}
+
+              {state.customTimers.map((ct) => {
+                const isSelected = currentMinutes === ct.minutes && timer.title === ct.label;
+                return (
+                  <div key={ct.id} className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => onSetPreset(ct.minutes, ct.label)}
+                      title={ct.label}
+                      className={`min-h-[36px] min-w-[38px] rounded-md px-2.5 font-mono text-xs font-semibold tabular-nums transition-colors ${
+                        isSelected
+                          ? 'bg-white text-slate-900 shadow-2xs dark:bg-slate-950 dark:text-white'
+                          : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                      }`}
+                    >
+                      {ct.minutes}
+                    </button>
+                    {isSelected && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteCustomTimer(ct.id)}
+                        className="grid size-6 place-items-center rounded text-slate-400 hover:text-rose-500"
+                        aria-label={`Remover timer ${ct.label}`}
+                        title="Remover timer personalizado"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={() => setCreatingTimer((v) => !v)}
+                className={`flex min-h-[36px] items-center gap-1 rounded-md px-2.5 text-xs font-semibold transition-colors ${
+                  creatingTimer
+                    ? 'bg-slate-900 text-white dark:bg-blue-600'
+                    : 'text-slate-600 hover:bg-white/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700'
+                }`}
+                aria-label="Criar timer personalizado"
+                title="Criar timer"
+              >
+                <Plus className="size-3.5" />
+                <span>Criar</span>
+              </button>
             </div>
           </div>
+
+          {/* Inline Custom Timer Creator */}
+          {creatingTimer && (
+            <form
+              onSubmit={handleSaveCustomTimer}
+              className="mt-4 flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700/80 dark:bg-slate-800/50"
+            >
+              <label className="flex min-w-0 flex-1 basis-36 flex-col gap-1">
+                <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                  Nome (opcional)
+                </span>
+                <input
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                  placeholder="Ex.: Sprint, Leitura"
+                  className="min-h-[40px] w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                />
+              </label>
+
+              <label className="flex w-24 flex-col gap-1">
+                <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                  Minutos
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  max={360}
+                  value={newMinutes}
+                  onChange={(e) => setNewMinutes(e.target.value)}
+                  className="min-h-[40px] w-full rounded-lg border border-slate-200 bg-white px-3 font-mono text-sm tabular-nums text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                />
+              </label>
+
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setCreatingTimer(false)}
+                  className="min-h-[40px] rounded-lg px-3 text-xs font-medium text-slate-500 hover:bg-slate-200/70 dark:text-slate-400 dark:hover:bg-slate-700"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="min-h-[40px] rounded-lg bg-slate-900 px-3.5 text-xs font-semibold text-white dark:bg-blue-600"
+                >
+                  Salvar
+                </button>
+              </div>
+            </form>
+          )}
 
           {/* Circular Countdown */}
           <div className="my-6 flex flex-col items-center">
@@ -169,7 +282,7 @@ export function FocusView({
                 ) : (
                   <>
                     <Play className="size-4" />
-                    <span>Iniciar foco</span>
+                    <span>Iniciar</span>
                   </>
                 )}
               </button>
@@ -178,8 +291,8 @@ export function FocusView({
                 type="button"
                 onClick={onCompleteSession}
                 className="grid size-12 place-items-center rounded-xl border border-emerald-200 bg-emerald-50/70 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-400"
-                aria-label="Registrar sessão concluída"
-                title="Registrar foco concluído"
+                aria-label="Concluir sessão"
+                title="Registrar sessão concluída"
               >
                 <CheckCircle2 className="size-5" />
               </button>
@@ -208,7 +321,7 @@ export function FocusView({
                         : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200'
                     }`}
                   >
-                    {b.title} · {b.duration}m
+                    {b.title} · {b.duration}
                   </button>
                 ))}
                 {pendingBullets.slice(0, 4).map((bul) => (
@@ -228,43 +341,19 @@ export function FocusView({
               </div>
             </div>
           )}
-        </section>
-
-        {/* Clean Unboxed Time Budget */}
-        <section className="rounded-2xl border border-slate-200/70 bg-white p-5 dark:border-slate-800/80 dark:bg-slate-900">
-          <h2 className="mb-4 font-display text-base font-bold text-slate-900 dark:text-white">
-            Orçamento do dia
-          </h2>
-          <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-slate-800">
-            <div className="pr-3">
-              <p className="text-xs text-slate-500 dark:text-slate-400">Planejado</p>
-              <p className="mt-1 font-mono text-lg font-bold tabular-nums text-slate-900 dark:text-white">
-                {fmtDuration(budget.plannedMinutes)}
-              </p>
-            </div>
-            <div className="px-3">
-              <p className="text-xs text-slate-500 dark:text-slate-400">Focado</p>
-              <p className="mt-1 font-mono text-lg font-bold tabular-nums text-blue-600 dark:text-blue-400">
-                {budget.focusedMinutes}m
-              </p>
-            </div>
-            <div className="pl-3">
-              <p className="text-xs text-slate-500 dark:text-slate-400">Livre</p>
-              <p className="mt-1 font-mono text-lg font-bold tabular-nums text-slate-900 dark:text-white">
-                {fmtDuration(budget.freeMinutes)}
-              </p>
-            </div>
-          </div>
 
           {todaySessions.length > 0 && (
-            <div className="mt-4 divide-y divide-slate-100 border-t border-slate-100 pt-2 dark:divide-slate-800 dark:border-slate-800">
-              {todaySessions.slice(0, 5).map((s) => (
+            <div className="mt-4 divide-y divide-slate-100 border-t border-slate-100 pt-3 dark:divide-slate-800 dark:border-slate-800">
+              <p className="pb-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                Sessões de hoje
+              </p>
+              {todaySessions.slice(0, 6).map((s) => (
                 <div key={s.id} className="flex items-center justify-between py-2 text-xs">
                   <span className="truncate font-medium text-slate-700 dark:text-slate-200">
                     {s.title}
                   </span>
                   <span className="shrink-0 font-mono tabular-nums text-slate-500 dark:text-slate-400">
-                    {Math.max(1, Math.round(s.durationSeconds / 60))}m ·{' '}
+                    {Math.max(1, Math.round(s.durationSeconds / 60))} ·{' '}
                     {new Date(s.completedAt).toLocaleTimeString('pt-BR', {
                       hour: '2-digit',
                       minute: '2-digit',
@@ -296,7 +385,7 @@ export function FocusView({
 
           {state.habits.length === 0 ? (
             <p className="py-5 text-center text-xs text-slate-400 dark:text-slate-500">
-              Nenhum hábito criado ainda. Adicione o primeiro para acompanhar sequências.
+              Nenhum hábito criado ainda.
             </p>
           ) : (
             <div className="space-y-4">

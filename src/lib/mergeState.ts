@@ -30,7 +30,6 @@ export function mergePlannerStates(local: PlannerState, remote: PlannerState): P
     }
   }
 
-  // Prune tombstones older than 30 days to keep payload lean
   const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
   for (const [id, ts] of Object.entries(deletedIds)) {
     if (ts < thirtyDaysAgo) {
@@ -42,10 +41,12 @@ export function mergePlannerStates(local: PlannerState, remote: PlannerState): P
   const blocks = mergeEntitiesById(local.blocks || [], remote.blocks || [], deletedIds);
   const bullets = mergeEntitiesById(local.bullets || [], remote.bullets || [], deletedIds)
     .sort((x, y) => x.order - y.order || x.createdAt - y.createdAt);
-  const notes = mergeEntitiesById(local.notes || [], remote.notes || [], deletedIds)
-    .sort((x, y) => Number(y.pinned) - Number(x.pinned) || y.updatedAt - x.updatedAt);
+  const customTimers = mergeEntitiesById(
+    local.customTimers || [],
+    remote.customTimers || [],
+    deletedIds
+  ).sort((x, y) => x.minutes - y.minutes);
 
-  // Focus sessions are append-only (immutable once logged, use completedAt)
   const sessionMap = new Map<string, (typeof local.focusSessions)[number]>();
   for (const s of [...(local.focusSessions || []), ...(remote.focusSessions || [])]) {
     if (deletedIds[s.id]) continue;
@@ -84,7 +85,7 @@ export function mergePlannerStates(local: PlannerState, remote: PlannerState): P
     habits,
     blocks,
     bullets,
-    notes,
+    customTimers,
     focusSessions,
     completions,
     completionsUpdatedAt,

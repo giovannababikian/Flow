@@ -3,9 +3,7 @@ import { Pause, Play, Timer as TimerIcon, WifiOff } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BlockEditorSheet } from './components/BlockEditorSheet.tsx';
 import { BottomNav } from './components/BottomNav.tsx';
-import { CalendarView } from './components/CalendarView.tsx';
 import { FocusView, type ActiveTimerState } from './components/FocusView.tsx';
-import { NotesView } from './components/NotesView.tsx';
 import { SyncBackupSheet } from './components/SyncBackupSheet.tsx';
 import { TodayView } from './components/TodayView.tsx';
 import { TopBar } from './components/TopBar.tsx';
@@ -39,7 +37,6 @@ import type {
   BulletType,
   CloudBackupMeta,
   HabitColor,
-  NoteDoc,
   PlannerState,
 } from './lib/types.ts';
 
@@ -443,42 +440,28 @@ export default function App() {
     });
   };
 
-  // Notes handlers
-  const handleCreateNote = (folder = 'Geral'): string => {
-    const id = `note-${uid()}`;
+  // Custom Timer handlers
+  const handleCreateCustomTimer = (minutes: number, label: string) => {
     const ts = Date.now();
-    const newNote: NoteDoc = {
-      id,
-      title: '',
-      content: '',
-      folder,
-      pinned: false,
-      createdAt: ts,
-      updatedAt: ts,
-    };
+    const id = `tmr-${uid()}`;
     mutateState((s) => ({
       ...s,
-      notes: [newNote, ...s.notes],
+      customTimers: [...s.customTimers, { id, label, minutes, updatedAt: ts }],
     }));
-    return id;
+    const secs = minutes * 60;
+    setTimer({
+      title: label,
+      totalSeconds: secs,
+      remainingSeconds: secs,
+      running: false,
+    });
   };
 
-  const handleUpdateNote = (
-    id: string,
-    patch: Partial<Pick<NoteDoc, 'title' | 'content' | 'folder' | 'pinned'>>
-  ) => {
+  const handleDeleteCustomTimer = (id: string) => {
     const ts = Date.now();
     mutateState((s) => ({
       ...s,
-      notes: s.notes.map((n) => (n.id === id ? { ...n, ...patch, updatedAt: ts } : n)),
-    }));
-  };
-
-  const handleDeleteNote = (id: string) => {
-    const ts = Date.now();
-    mutateState((s) => ({
-      ...s,
-      notes: s.notes.filter((n) => n.id !== id),
+      customTimers: s.customTimers.filter((t) => t.id !== id),
       deletedIds: { ...s.deletedIds, [id]: ts },
     }));
   };
@@ -557,7 +540,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="min-h-screen bg-[#F6F7F9] text-slate-900 pb-24 md:pb-12 dark:bg-[#0B0F17] dark:text-slate-100">
+      <div className="min-h-screen overflow-x-hidden bg-[#F6F7F9] text-slate-900 pb-24 md:pb-12 dark:bg-[#0B0F17] dark:text-slate-100">
         <TopBar
           screen={screen}
           onNavigate={setScreen}
@@ -610,26 +593,6 @@ export default function App() {
               </motion.div>
             )}
 
-            {screen === 'notes' && (
-              <motion.div
-                key="notes"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <NotesView
-                  notes={state.notes}
-                  onCreateNote={handleCreateNote}
-                  onUpdateNote={handleUpdateNote}
-                  onDeleteNote={handleDeleteNote}
-                  onSendToTodayBullet={(text) =>
-                    handleAddBullet('task', text, dateKey(now))
-                  }
-                />
-              </motion.div>
-            )}
-
             {screen === 'focus' && (
               <motion.div
                 key="focus"
@@ -642,14 +605,16 @@ export default function App() {
                   state={state}
                   displayDate={displayDate}
                   timer={timer}
-                  onSetPreset={(minutes) =>
-                    setTimer((prev) => ({
-                      ...prev,
+                  onSetPreset={(minutes, label) =>
+                    setTimer({
+                      title: label ?? 'Sessão de foco profundo',
                       totalSeconds: minutes * 60,
                       remainingSeconds: minutes * 60,
                       running: false,
-                    }))
+                    })
                   }
+                  onCreateCustomTimer={handleCreateCustomTimer}
+                  onDeleteCustomTimer={handleDeleteCustomTimer}
                   onSelectTarget={(title, minutes, refs) =>
                     setTimer({
                       title,
@@ -675,28 +640,6 @@ export default function App() {
                   onOpenNewHabit={() =>
                     setEditorState({ block: null, start: 9 * 60, initialTab: 'habit' })
                   }
-                />
-              </motion.div>
-            )}
-
-            {screen === 'calendar' && (
-              <motion.div
-                key="calendar"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <CalendarView
-                  state={state}
-                  displayDate={displayDate}
-                  now={now}
-                  onChangeDate={setDisplayDate}
-                  onOpenDay={(d) => {
-                    setDisplayDate(d);
-                    setScreen('today');
-                  }}
-                  onEditBlock={(b) => setEditorState({ block: b, start: b.start })}
                 />
               </motion.div>
             )}

@@ -1,4 +1,4 @@
-import { CalendarDays, CheckSquare, FileText, Timer } from 'lucide-react';
+import { CheckSquare, Timer } from 'lucide-react';
 import type { AppScreen } from '../lib/types.ts';
 
 interface BottomNavProps {
@@ -9,9 +9,7 @@ interface BottomNavProps {
 
 const TABS: { id: AppScreen; label: string; icon: typeof CheckSquare }[] = [
   { id: 'today', label: 'Hoje', icon: CheckSquare },
-  { id: 'notes', label: 'Notas', icon: FileText },
   { id: 'focus', label: 'Foco', icon: Timer },
-  { id: 'calendar', label: 'Agenda', icon: CalendarDays },
 ];
 
 export function BottomNav({ screen, onNavigate, pendingBulletsCount }: BottomNavProps) {
@@ -20,7 +18,7 @@ export function BottomNav({ screen, onNavigate, pendingBulletsCount }: BottomNav
       className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200/90 bg-white/95 pb-safe backdrop-blur-md md:hidden dark:border-slate-800/90 dark:bg-slate-950/95"
       aria-label="Navegação móvel"
     >
-      <div className="grid h-16 grid-cols-4 items-center">
+      <div className="grid h-16 grid-cols-2 items-center">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const active = screen === tab.id;
@@ -38,7 +36,7 @@ export function BottomNav({ screen, onNavigate, pendingBulletsCount }: BottomNav
               <div className="relative">
                 <Icon className="size-5" strokeWidth={active ? 2.25 : 1.8} />
                 {tab.id === 'today' && pendingBulletsCount > 0 && (
-                  <span className="absolute -right-2 -top-1 font-mono text-[10px] font-bold tabular-nums text-blue-600 dark:text-blue-400">
+                  <span className="absolute -right-2.5 -top-1 font-mono text-[10px] font-bold tabular-nums text-blue-600 dark:text-blue-400">
                     {pendingBulletsCount > 9 ? '9+' : pendingBulletsCount}
                   </span>
                 )}
